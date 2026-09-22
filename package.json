@@ -1,0 +1,81 @@
+{
+  "name": "revocable-consent",
+  "version": "0.1.0",
+  "description": "Revocable consent for archives: a consent state machine, scope-gated media delivery, a revocation cascade with deletion receipts, and a hash-chained ledger.",
+  "license": "Apache-2.0",
+  "author": "Maksym Stepanenko",
+  "homepage": "https://github.com/ctmakc/revocable-consent",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ctmakc/revocable-consent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ctmakc/revocable-consent/issues"
+  },
+  "keywords": [
+    "consent",
+    "revocation",
+    "archives",
+    "digital-heritage",
+    "privacy",
+    "audit-log",
+    "hash-chain",
+    "gdpr",
+    "right-to-erasure"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "verify-ledger": "./bin/verify-ledger.mjs"
+  },
+  "files": [
+    "dist",
+    "src",
+    "bin",
+    "db",
+    "docs",
+    "LICENSE",
+    "LICENSE-docs",
+    "NOTICE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "RC_INTEGRATION=1 vitest run test/integration",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "verify-ledger": "node bin/verify-ledger.mjs",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down -v",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "pg": "^8.13.1",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  },
+  "optionalDependencies": {},
+  "peerDependencies": {
+    "pg": ">=8"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": true
+    }
+  }
+}
