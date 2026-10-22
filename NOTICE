@@ -11,6 +11,6 @@ everything in docs/ — is licensed under the Creative Commons Attribution 4.0
 International licence (see LICENSE-docs).
 
 This component was extracted from FirstCiv (https://firstciv.com) by its
-author. Parts of this repository — documentation prose, the generalisation of
-the extracted modules, and test scaffolding — were drafted with AI assistance
-under the author's direction, then reviewed, edited and approved by the author.
+author. The code, tests and documentation were written with AI coding
+assistants (Anthropic Claude, through Claude Code) under the author's
+direction; see "Origin and AI assistance" in README.md.

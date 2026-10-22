@@ -252,7 +252,15 @@ load-bearing, so a change to them comes with tests that fail without it.
 ## Origin and AI assistance
 
 Extracted from [FirstCiv](https://firstciv.com), an archive of community-held
-cultural material, by its author. Parts of this repository — documentation
-prose, the generalisation of the extracted modules, and test scaffolding — were
-drafted with AI assistance under the author's direction, then reviewed, edited
-and approved by the author, who is responsible for all of it.
+cultural material, by its author.
+
+Generative AI use, past and present: the FirstCiv code this library comes
+from, the extraction and generalisation into this repository, the tests and
+the documentation were written with AI coding assistants (Anthropic Claude,
+used through Claude Code) working under the author's direction. The author set
+the consent rules and the design, reviewed the changes and is responsible for
+all of it. Commits made with AI assistance carry a `Co-Authored-By` trailer
+that names the model.
+
+Contributors: say in the pull request whether and how you used generative AI,
+and keep the `Co-Authored-By` trailer when a tool adds one.
