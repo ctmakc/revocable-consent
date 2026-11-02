@@ -36,6 +36,7 @@ export type VerifyResult =
   | { ok: false; reason: SignedUrlFailure };
 
 const FIELD_SEP = '\n';
+const DECIMAL_RE = /^(0|-?[1-9][0-9]*)$/;
 
 function payload(claims: SignedUrlClaims): string {
   if (claims.key.includes(FIELD_SEP)) throw new Error('signed-url: key must not contain a newline');
@@ -99,6 +100,12 @@ export function verifySignedUrl(
   const sig = params.get('sig');
   if (!key || !expRaw || !epochRaw || !sig) return { ok: false, reason: 'missing-parameters' };
 
+  // Only the exact decimal form mintSignedUrl writes. Number() alone would
+  // also accept '0x…', '1e3', ' 5' and '', so one signature would verify
+  // under many spellings of the same claims.
+  if (!DECIMAL_RE.test(expRaw) || !DECIMAL_RE.test(epochRaw)) {
+    return { ok: false, reason: 'malformed' };
+  }
   const exp = Number(expRaw);
   const epoch = Number(epochRaw);
   if (!Number.isSafeInteger(exp) || !Number.isSafeInteger(epoch)) {

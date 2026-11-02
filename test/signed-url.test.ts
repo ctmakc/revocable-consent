@@ -100,3 +100,29 @@ describe('mintSignedUrl / verifySignedUrl', () => {
     expect(NO_SHARED_CACHE_HEADERS['Cache-Control']).toBe('private, no-store');
   });
 });
+
+describe('verifySignedUrl only accepts the canonical numeric form', () => {
+  it('rejects alternative spellings of exp/epoch that Number() would accept', () => {
+    const url = new URL(
+      mintSignedUrl(BASE, { key: 'k', epoch: 16, exp: T0 + 60_000 }, SECRET, T0)
+    );
+    expect(verifySignedUrl(url, SECRET, { currentEpoch: 16, now: T0 }).ok).toBe(true);
+    const variants: [string, string][] = [
+      ['epoch', '0x10'],
+      ['epoch', '1.6e1'],
+      ['epoch', ' 16'],
+      ['epoch', '016'],
+      ['epoch', '+16'],
+      ['exp', (T0 + 60_000).toExponential()],
+      ['exp', `${T0 + 60_000}.0`],
+    ];
+    for (const [param, value] of variants) {
+      const u = new URL(url);
+      u.searchParams.set(param, value);
+      expect(verifySignedUrl(u, SECRET, { currentEpoch: 16, now: T0 }), `${param}=${value}`).toEqual({
+        ok: false,
+        reason: 'malformed',
+      });
+    }
+  });
+});
