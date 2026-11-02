@@ -253,6 +253,35 @@ describe('revokeConsent cascade', () => {
     expect(state.ledgerRows[0].payload.complete).toBe(false);
   });
 
+  it('a publish that races the revocation is still taken down', async () => {
+    // load() sees `approved`; a concurrent publish (whose consent check ran
+    // before our step 1) lands before step 3. The item must not stay published.
+    const { ports, state } = world({ status: 'approved' });
+    const racing: RevocationPorts = {
+      ...ports,
+      async revokeConsentRecords(id, at) {
+        const n = await ports.revokeConsentRecords(id, at);
+        state.status = 'published'; // the racing publish commits here
+        return n;
+      },
+    };
+    const res = await revokeConsent(racing, ID);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(state.status).toBe('withdrawn');
+    expect(res.receipt.previous_status).toBe('approved');
+    expect(res.receipt.status).toBe('withdrawn');
+  });
+
+  it('an unchanged, non-live status is reported as read back', async () => {
+    const { ports, state } = world({ status: 'in_review' });
+    const res = await revokeConsent(ports, ID);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(state.status).toBe('in_review');
+    expect(res.receipt.status).toBe('in_review');
+  });
+
   it('deleteObjects: false on an item with no stored objects is complete', async () => {
     const { ports } = world({ objects: [] });
     const res = await revokeConsent(ports, ID, { deleteObjects: false });
