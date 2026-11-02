@@ -223,7 +223,12 @@ export async function revokeConsent(
     storage_adapter: ports.storage.name,
     objects,
     ...(cachePurge ? { cache_purge: cachePurge } : {}),
-    complete: deleteObjects ? objects.every((o) => o.verified_absent) : objects.length === 0,
+    // Without deletion the outcome list is always empty, so it cannot answer
+    // "is anything left?" — the held objects can. Skipping deletion of stored
+    // bytes is never a complete revocation.
+    complete: deleteObjects
+      ? objects.every((o) => o.verified_absent)
+      : subject.objects.length === 0,
   };
   const receipt: RevocationReceipt = { ...draft, hash: receiptHash(draft) };
 

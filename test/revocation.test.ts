@@ -248,6 +248,17 @@ describe('revokeConsent cascade', () => {
     expect(res.receipt.objects).toEqual([]);
     expect(storage.keys()).toHaveLength(2);
     expect(state.ledgerRows[0].entry_type).toBe('consent_revoked');
+    // The bytes are still held, so the receipt must not claim completion.
+    expect(res.receipt.complete).toBe(false);
+    expect(state.ledgerRows[0].payload.complete).toBe(false);
+  });
+
+  it('deleteObjects: false on an item with no stored objects is complete', async () => {
+    const { ports } = world({ objects: [] });
+    const res = await revokeConsent(ports, ID, { deleteObjects: false });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.receipt.complete).toBe(true);
   });
 
   it('the receipt hash covers the outcome (tampering with it is detectable)', async () => {
