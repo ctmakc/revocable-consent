@@ -50,7 +50,13 @@ export function uploadVariantFor(bytes: number): UploadVariant {
 /** Sanitise an uploaded file name for use in a storage key. */
 export function sanitiseFilename(name: string): string {
   const base = (name || 'file').split(/[\\/]/).pop() || 'file';
-  const cleaned = base.replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^\.+/, '').slice(0, 120);
+  // Runs of dots are collapsed so the result never contains '..', which
+  // incomingPathnameValid() rejects outright (e.g. 'take..2.wav').
+  const cleaned = base
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/\.{2,}/g, '.')
+    .replace(/^\.+/, '')
+    .slice(0, 120);
   return cleaned || 'file';
 }
 

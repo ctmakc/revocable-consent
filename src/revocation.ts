@@ -157,6 +157,16 @@ export async function revokeConsent(
   if (decision.next !== subject.status) {
     const moved = await ports.setStatus(contributionId, subject.status, decision.next);
     if (!moved) status = (await ports.readStatus(contributionId)) ?? decision.next;
+  } else {
+    // The decision was taken against the status read at load time. A publish
+    // that passed its own consent check before step 1 landed can have moved
+    // the item to published since then, so look again.
+    status = (await ports.readStatus(contributionId)) ?? subject.status;
+  }
+  // Whatever path got us here, a revoked item must not stay stored as live.
+  if (status === 'published') {
+    const moved = await ports.setStatus(contributionId, 'published', 'withdrawn');
+    status = moved ? 'withdrawn' : (await ports.readStatus(contributionId)) ?? status;
   }
 
   // 4–5. Delete the bytes, then read each key back. An adapter that reports a
@@ -223,7 +233,12 @@ export async function revokeConsent(
     storage_adapter: ports.storage.name,
     objects,
     ...(cachePurge ? { cache_purge: cachePurge } : {}),
-    complete: deleteObjects ? objects.every((o) => o.verified_absent) : objects.length === 0,
+    // Without deletion the outcome list is always empty, so it cannot answer
+    // "is anything left?" — the held objects can. Skipping deletion of stored
+    // bytes is never a complete revocation.
+    complete: deleteObjects
+      ? objects.every((o) => o.verified_absent)
+      : subject.objects.length === 0,
   };
   const receipt: RevocationReceipt = { ...draft, hash: receiptHash(draft) };
 
