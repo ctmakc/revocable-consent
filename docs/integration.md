@@ -84,8 +84,8 @@ if (!result.ok) return conflict(result.error);
 const updated = await query(
   `UPDATE contributions SET status = $1, updated_at = now()
     WHERE id = $2 AND status = $3
-      AND EXISTS (SELECT 1 FROM consent_records r WHERE r.contribution_id = id)
-      AND NOT EXISTS (SELECT 1 FROM consent_records r WHERE r.contribution_id = id AND r.revoked)
+      AND EXISTS (SELECT 1 FROM consent_records r WHERE r.contribution_id = contributions.id)
+      AND NOT EXISTS (SELECT 1 FROM consent_records r WHERE r.contribution_id = contributions.id AND r.revoked)
   RETURNING id`,
   [result.next, id, current.status]
 );
