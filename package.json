@@ -61,15 +61,14 @@
     "db:down": "docker compose down -v",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.10",
+    "fast-check": "^3.23.2",
     "pg": "^8.13.1",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   },
-  "optionalDependencies": {},
   "peerDependencies": {
     "pg": ">=8"
   },
