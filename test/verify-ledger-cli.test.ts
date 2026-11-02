@@ -80,6 +80,23 @@ describe('verify-ledger CLI', () => {
     expect(r.code).toBe(1);
   });
 
+  it('exits 1 with a message (no crash) on malformed rows', async () => {
+    const rows = buildChain(2);
+    const { hash: _dropped, ...noHash } = rows[1] as Record<string, unknown>;
+    for (const [name, chain] of [
+      ['no-hash', [rows[0], noHash]],
+      ['null-row', [rows[0], null]],
+      ['string-row', ['not an entry']],
+    ] as const) {
+      const path = join(dir, `${name}.json`);
+      writeFileSync(path, JSON.stringify(chain));
+      const r = await cli(['--file', path]);
+      expect(r.code, name).toBe(1);
+      expect(r.stderr, name).toMatch(/verify-ledger: FAIL/);
+      expect(r.stderr, name).not.toMatch(/TypeError/);
+    }
+  });
+
   it('exits 2 with usage when called wrong', async () => {
     expect((await cli([])).code).toBe(2);
     expect((await cli(['--file', join(dir, 'nope.json')])).code).not.toBe(0);
