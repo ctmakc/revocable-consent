@@ -94,3 +94,31 @@ describe('verify-ledger CLI', () => {
     expect(stdout).toMatch(/OK — 2 entries/);
   });
 });
+
+describe('verify-ledger CLI — input errors', () => {
+  it('exits 2 (input error, not "chain broken") when the file does not exist', async () => {
+    const r = await cli(['--file', join(dir, 'does-not-exist.json')]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toMatch(/could not read/);
+  });
+
+  it('reports a row without a hash as a broken chain instead of crashing', async () => {
+    const rows = buildChain(2);
+    delete (rows[1] as { hash?: unknown }).hash;
+    const path = join(dir, 'nohash.json');
+    writeFileSync(path, JSON.stringify(rows));
+    const r = await cli(['--file', path]);
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/FAIL at seq=2: entry seq=2 has no hash/);
+    expect(r.stderr).not.toMatch(/TypeError/);
+  });
+
+  it('reports a null row as a broken chain instead of crashing', async () => {
+    const path = join(dir, 'nullrow.json');
+    writeFileSync(path, JSON.stringify([buildChain(1)[0], null]));
+    const r = await cli(['--file', path]);
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/is not an object/);
+    expect(r.stderr).not.toMatch(/TypeError/);
+  });
+});

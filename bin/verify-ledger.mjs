@@ -40,7 +40,12 @@ function flag(name) {
 }
 
 async function rowsFromFile(path) {
-  const raw = path === '-' ? readFileSync(0, 'utf8') : readFileSync(path, 'utf8');
+  let raw;
+  try {
+    raw = path === '-' ? readFileSync(0, 'utf8') : readFileSync(path, 'utf8');
+  } catch (err) {
+    usage(`could not read ${path === '-' ? 'stdin' : path}: ${err.message}`);
+  }
   let parsed;
   try {
     parsed = JSON.parse(raw);
@@ -62,7 +67,11 @@ async function rowsFromPostgres(table) {
     usage('the `pg` package is not installed (npm i pg), or use --file');
   }
   const client = new (pg.default ?? pg).Client({ connectionString: process.env.DATABASE_URL });
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (err) {
+    usage(`could not connect to Postgres: ${err.message}`);
+  }
   try {
     const res = await client.query(`SELECT ${COLUMNS} FROM ${table} ORDER BY seq ASC`);
     return res.rows;

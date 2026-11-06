@@ -58,7 +58,9 @@ export function mintSignedUrl(
   secret: string,
   now: number = Date.now()
 ): string {
-  const exp = claims.exp ?? now + (claims.ttlMs ?? 5 * 60 * 1000);
+  // Whole milliseconds: verifySignedUrl() rejects a non-integer exp as
+  // malformed, so a fractional ttl/now must not mint an unverifiable URL.
+  const exp = Math.floor(claims.exp ?? now + (claims.ttlMs ?? 5 * 60 * 1000));
   const full: SignedUrlClaims = { key: claims.key, exp, epoch: claims.epoch };
   const url = new URL(baseUrl);
   url.searchParams.set('key', full.key);

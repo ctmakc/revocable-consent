@@ -100,3 +100,12 @@ describe('mintSignedUrl / verifySignedUrl', () => {
     expect(NO_SHARED_CACHE_HEADERS['Cache-Control']).toBe('private, no-store');
   });
 });
+
+describe('mintSignedUrl — fractional times', () => {
+  it('a URL minted with a fractional ttl or now still verifies', () => {
+    const a = mintSignedUrl(BASE, { key: 'k', epoch: 0, ttlMs: 1500.5 }, SECRET, T0);
+    expect(verifySignedUrl(a, SECRET, { currentEpoch: 0, now: T0 })).toMatchObject({ ok: true });
+    const b = mintSignedUrl(BASE, { key: 'k', epoch: 0, ttlMs: 60_000 }, SECRET, T0 + 0.25);
+    expect(verifySignedUrl(b, SECRET, { currentEpoch: 0, now: T0 })).toMatchObject({ ok: true });
+  });
+});

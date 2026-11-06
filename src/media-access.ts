@@ -1,7 +1,7 @@
 // Pure media-delivery + direct-upload decision logic.
 // No schema library, no DB, no network — safe to import from BOTH a browser
 // bundle (the intake form) and server routes, and fully unit-testable.
-import { isPubliclyVisible, type Status, type ConsentContext } from './moderation';
+import { isPubliclyVisible, type Status, type ConsentContext } from './moderation.js';
 
 // ---- accepted media types ----
 // Single source of truth, kept here (zero-dep, browser-safe) so the client form,
@@ -50,7 +50,13 @@ export function uploadVariantFor(bytes: number): UploadVariant {
 /** Sanitise an uploaded file name for use in a storage key. */
 export function sanitiseFilename(name: string): string {
   const base = (name || 'file').split(/[\\/]/).pop() || 'file';
-  const cleaned = base.replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^\.+/, '').slice(0, 120);
+  // Runs of dots collapse to one: incomingPathnameValid() rejects any '..',
+  // so a sanitised name must never contain one (e.g. 'report..final.pdf').
+  const cleaned = base
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/\.{2,}/g, '.')
+    .replace(/^\.+/, '')
+    .slice(0, 120);
   return cleaned || 'file';
 }
 

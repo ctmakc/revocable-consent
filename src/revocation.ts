@@ -21,8 +21,8 @@
 // Everything is injected through ports, so this file has no database, no HTTP
 // and no object-store SDK in it, and the whole cascade is unit-testable.
 import { canonicalJson, sha256Hex } from './ledger-core.mjs';
-import { transition, type Status } from './moderation';
-import type { CachePurger, StorageAdapter } from './storage';
+import { transition, type Status } from './moderation.js';
+import type { CachePurger, StorageAdapter } from './storage.js';
 
 export interface RevocationSubject {
   contribution_id: string;
@@ -170,17 +170,23 @@ export async function revokeConsent(
         deleted: false,
         verified_absent: false,
       };
-      try {
-        if (ports.storage.head) {
+      // The metadata read is optional and informational: its failure must
+      // never stop the delete itself, so it gets its own try.
+      if (ports.storage.head) {
+        try {
           const meta = await ports.storage.head(obj.key);
           if (meta) {
             outcome.bytes = meta.bytes;
             outcome.checksum_sha256 = meta.checksum_sha256 ?? null;
           }
+        } catch (err) {
+          outcome.error = err instanceof Error ? err.message : String(err);
         }
+      }
+      try {
         outcome.deleted = await ports.storage.delete(obj.key);
       } catch (err) {
-        outcome.error = err instanceof Error ? err.message : String(err);
+        outcome.error = outcome.error ?? (err instanceof Error ? err.message : String(err));
       }
       try {
         outcome.verified_absent = !(await ports.storage.exists(obj.key));

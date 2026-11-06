@@ -76,7 +76,15 @@ export function computeEntryHash({ entry_type, contribution_id, actor, payload, 
 export function verifyChain(rows) {
   let prev = null;
   for (const row of rows) {
+    // Malformed input (e.g. a hand-edited export) is a broken chain, reported
+    // as such — never a TypeError out of the verifier.
+    if (row === null || typeof row !== 'object' || Array.isArray(row)) {
+      return { ok: false, count: 0, error: `entry after seq=${prev ? prev.seq : 'genesis'} is not an object` };
+    }
     const seq = Number(row.seq);
+    if (typeof row.hash !== 'string') {
+      return { ok: false, count: 0, seq, error: `entry seq=${seq} has no hash` };
+    }
     if (prev === null) {
       if (Number(row.prev_seq) !== GENESIS_PREV_SEQ) {
         return { ok: false, count: 0, seq, error: `genesis entry seq=${seq} has prev_seq=${row.prev_seq}, expected ${GENESIS_PREV_SEQ}` };

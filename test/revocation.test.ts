@@ -281,3 +281,28 @@ describe('revokeConsent cascade', () => {
     });
   });
 });
+
+describe('revokeConsent — metadata read failure', () => {
+  it('still deletes the object when the optional head() throws', async () => {
+    const { ports, storage } = world();
+    const flakyHead: RevocationPorts = {
+      ...ports,
+      storage: {
+        name: storage.name,
+        presignRead: (k, t) => storage.presignRead(k, t),
+        delete: (k) => storage.delete(k),
+        exists: (k) => storage.exists(k),
+        async head() {
+          throw new Error('metadata endpoint 503');
+        },
+      },
+    };
+    const res = await revokeConsent(flakyHead, ID);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(storage.keys()).toEqual([]);
+    expect(res.receipt.objects.every((o) => o.deleted && o.verified_absent)).toBe(true);
+    expect(res.receipt.objects[0].error).toBe('metadata endpoint 503');
+    expect(res.receipt.complete).toBe(true);
+  });
+});

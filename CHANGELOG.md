@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Built package is importable under Node ESM: relative imports in `src/` now
+  carry `.js` extensions (`dist/index.js` failed with `ERR_MODULE_NOT_FOUND`).
+- `revokeConsent`: a throwing optional `storage.head()` no longer skips the
+  delete of that object.
+- `verify-ledger`: an unreadable `--file` / failed Postgres connect exits 2
+  (input error) instead of crashing with exit 1; rows that are not objects or
+  lack a `hash` are reported as a broken chain instead of a `TypeError`.
+- `sanitiseFilename` collapses `..` so its output always passes
+  `incomingPathnameValid`.
+- `mintSignedUrl` floors `exp` so a fractional ttl/now cannot mint a URL that
+  `verifySignedUrl` rejects as malformed.
+
 ## [0.1.0] — 2026-09-22
 
 First public release. Extracted from [FirstCiv](https://firstciv.com) and

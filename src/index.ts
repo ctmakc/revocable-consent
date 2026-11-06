@@ -14,9 +14,9 @@ export {
   type BuiltinScopeUse,
   type ConsentRecord,
   type ScopeUse,
-} from './consent';
+} from './consent.js';
 
-export { CONSENT_TEMPLATE, consentStatementProblem } from './consent-template';
+export { CONSENT_TEMPLATE, consentStatementProblem } from './consent-template.js';
 
 export {
   ACTIONS,
@@ -28,7 +28,7 @@ export {
   type ConsentContext,
   type Status,
   type TransitionResult,
-} from './moderation';
+} from './moderation.js';
 
 export {
   ALLOWED_MIME,
@@ -41,7 +41,7 @@ export {
   sanitiseFilename,
   uploadVariantFor,
   type UploadVariant,
-} from './media-access';
+} from './media-access.js';
 
 export {
   NO_SHARED_CACHE_HEADERS,
@@ -51,7 +51,7 @@ export {
   type SignedUrlClaims,
   type SignedUrlFailure,
   type VerifyResult as SignedUrlVerifyResult,
-} from './signed-url';
+} from './signed-url.js';
 
 export {
   FailingDeleteAdapter,
@@ -59,7 +59,7 @@ export {
   type CachePurger,
   type StorageAdapter,
   type StoredObject,
-} from './storage';
+} from './storage.js';
 
 export {
   outstandingWork,
@@ -70,7 +70,7 @@ export {
   type RevocationReceipt,
   type RevocationResult,
   type RevocationSubject,
-} from './revocation';
+} from './revocation.js';
 
 export {
   GENESIS_PREV_HASH,
@@ -89,6 +89,6 @@ export {
   type LedgerPayload,
   type QueryFn,
   type VerifyResult,
-} from './ledger';
+} from './ledger.js';
 
-export { sha256Hex } from './checksum';
+export { sha256Hex } from './checksum.js';
