@@ -6,6 +6,28 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Package entry point** — relative imports in `src/` now carry `.js`
+  extensions, so the built `dist/index.js` loads under Node's native ESM loader
+  (it failed with `ERR_MODULE_NOT_FOUND` before). A test builds the package and
+  imports it in a plain Node process.
+- **Ledger** — `appendLedgerEntry` hashes `contribution_id` in the form a
+  Postgres `uuid` column returns (lowercase, hyphenated), so an id passed in
+  upper case, with braces or without hyphens no longer produces an entry that
+  can never re-verify.
+- **Ledger** — `publicEntryType('constructor')` and other `Object.prototype`
+  names return the input instead of a prototype member.
+- **Ledger verification** — `verifyChain` reports a row without a stored hash,
+  or a non-object row, as a failed verification instead of throwing.
+- **verify-ledger CLI** — an unreadable file or an unreachable database exits
+  2 (input error) with a one-line message instead of 1 ("chain broken") with a
+  stack trace; the database URL is never echoed.
+- **Revocation** — a failing optional `head()` metadata read no longer skips
+  the delete of that object; the error is still recorded on the outcome.
+- **Signed URLs** — `verifySignedUrl` fails closed (`stale-epoch`) when
+  `currentEpoch` is missing or not a number, instead of accepting every URL.
+
 ## [0.1.0] — 2026-09-22
 
 First public release. Extracted from [FirstCiv](https://firstciv.com) and

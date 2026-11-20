@@ -85,6 +85,38 @@ describe('verify-ledger CLI', () => {
     expect((await cli(['--file', join(dir, 'nope.json')])).code).not.toBe(0);
   });
 
+  it('exits 2 (input error), not 1 (chain broken), when the file cannot be read', async () => {
+    const r = await cli(['--file', join(dir, 'nope.json')]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toMatch(/verify-ledger: could not read/);
+    expect(r.stderr).not.toMatch(/at readFileSync/); // no stack trace for an auditor
+  });
+
+  it('exits 2 (input error), not 1 (chain broken), when Postgres is unreachable', async () => {
+    // 127.0.0.1:1 refuses immediately; nothing leaves the machine.
+    const r = await new Promise<{ code: number; stderr: string }>((resolve) => {
+      execFile(
+        process.execPath,
+        [CLI, '--postgres'],
+        { env: { ...process.env, DATABASE_URL: 'postgres://u:p@127.0.0.1:1/db' } },
+        (err, _stdout, stderr) => resolve({ code: (err as { code?: number } | null)?.code ?? 0, stderr })
+      );
+    });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toMatch(/verify-ledger: could not read the ledger from Postgres/);
+    expect(r.stderr).not.toMatch(/u:p@/); // the connection string (password) is never echoed
+  });
+
+  it('exits 1 with a FAIL line (no crash) on a row without a hash', async () => {
+    const rows = buildChain(2);
+    delete (rows[1] as { hash?: unknown }).hash;
+    const path = join(dir, 'nohash.json');
+    writeFileSync(path, JSON.stringify(rows));
+    const r = await cli(['--file', path]);
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/FAIL at seq=2/);
+  });
+
   it('reads a chain from stdin', async () => {
     const rows = buildChain(2);
     const { stdout } = await run('bash', [

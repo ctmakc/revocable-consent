@@ -281,3 +281,29 @@ describe('revokeConsent cascade', () => {
     });
   });
 });
+
+describe('revokeConsent — optional metadata read must not block deletion', () => {
+  it('still deletes (and verifies) an object when head() throws', async () => {
+    const base = world({ objects: ['media/song.mp3'] });
+    const inner = base.storage;
+    // A store whose metadata endpoint is broken but whose delete works.
+    const flakyHead = {
+      name: 'flaky-head',
+      presignRead: (k: string, t: number) => inner.presignRead(k, t),
+      delete: (k: string) => inner.delete(k),
+      exists: (k: string) => inner.exists(k),
+      async head(): Promise<never> {
+        throw new Error('HEAD 500');
+      },
+    };
+    const res = await revokeConsent({ ...base.ports, storage: flakyHead }, ID);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const [o] = res.receipt.objects;
+    expect(o.deleted).toBe(true);
+    expect(o.verified_absent).toBe(true);
+    expect(o.error).toBe('HEAD 500'); // the failed metadata read is still recorded
+    expect(inner.keys()).toEqual([]);
+    expect(res.receipt.complete).toBe(true);
+  });
+});

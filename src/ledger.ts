@@ -54,7 +54,9 @@ const LEGACY_ENTRY_TYPE: Record<string, LedgerEntryType> = {
 
 /** Map a stored entry_type (current or legacy) to the current vocabulary. */
 export function publicEntryType(t: string): LedgerEntryType | string {
-  return LEGACY_ENTRY_TYPE[t] ?? t;
+  // Own-property lookup: a plain `LEGACY_ENTRY_TYPE[t]` would return
+  // Object.prototype members ('constructor', 'toString', …) for those names.
+  return Object.hasOwn(LEGACY_ENTRY_TYPE, t) ? LEGACY_ENTRY_TYPE[t] : t;
 }
 
 /**
@@ -97,6 +99,23 @@ export interface AppendInput {
 
 const MAX_APPEND_ATTEMPTS = 3;
 
+// Every spelling Postgres' uuid input accepts: optional braces, upper or lower
+// case, hyphens after any group of four hex digits (or none at all).
+const PG_UUID_INPUT_RE = /^(?:\{[0-9a-f]{4}(?:-?[0-9a-f]{4}){7}\}|[0-9a-f]{4}(?:-?[0-9a-f]{4}){7})$/i;
+
+/**
+ * The value a uuid column will hand back for `id`: Postgres stores a uuid and
+ * always returns it lowercase, hyphenated 8-4-4-4-12. contribution_id is part
+ * of the entry hash, so hashing the caller's spelling ('A0EE…', '{a0ee…}',
+ * no hyphens) would store a row that can never re-verify. Anything that is not
+ * a uuid spelling is returned untouched.
+ */
+function canonicalContributionId(id: string | null): string | null {
+  if (typeof id !== 'string' || !PG_UUID_INPUT_RE.test(id)) return id;
+  const hex = id.replace(/[{}-]/g, '').toLowerCase();
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function isUniqueViolation(err: unknown): boolean {
   const e = err as { code?: string; message?: string };
   return e?.code === '23505' || /duplicate key value/i.test(e?.message ?? '');
@@ -119,6 +138,8 @@ export async function appendLedgerEntry(
   // "tampering" alarm baked into the chain. The round trip applies toJSON,
   // drops undefined and rejects non-JSON values (cycles throw here, early).
   const payload: LedgerPayload = JSON.parse(JSON.stringify(input.payload));
+  // Same reasoning for the id: hash the form the uuid column will return.
+  const contribution_id = canonicalContributionId(input.contribution_id);
   let lastErr: unknown = null;
   for (let attempt = 0; attempt < MAX_APPEND_ATTEMPTS; attempt++) {
     const tail = (
@@ -130,7 +151,7 @@ export async function appendLedgerEntry(
     const prev_hash = tail ? tail.hash : GENESIS_PREV_HASH;
     const hash = computeEntryHash({
       entry_type: input.entry_type,
-      contribution_id: input.contribution_id,
+      contribution_id,
       actor: input.actor,
       payload,
       prev_hash,
@@ -142,7 +163,7 @@ export async function appendLedgerEntry(
          RETURNING *`,
         [
           prev_seq,
-          input.contribution_id,
+          contribution_id,
           input.entry_type,
           input.actor,
           JSON.stringify(payload), // the SAME normalised value the hash committed to

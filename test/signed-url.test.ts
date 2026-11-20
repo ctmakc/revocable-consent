@@ -100,3 +100,22 @@ describe('mintSignedUrl / verifySignedUrl', () => {
     expect(NO_SHARED_CACHE_HEADERS['Cache-Control']).toBe('private, no-store');
   });
 });
+
+describe('verifySignedUrl — unknown current epoch fails closed', () => {
+  it('rejects when currentEpoch is missing or not a number (e.g. a wrong column name)', () => {
+    const url = mintSignedUrl(BASE, { key: 'k', epoch: 0, ttlMs: 60_000 }, SECRET, T0);
+    for (const bad of [undefined, null, NaN, 'abc'] as unknown[]) {
+      const r = verifySignedUrl(url, SECRET, { currentEpoch: bad as number, now: T0 + 1 });
+      expect(r).toEqual({ ok: false, reason: 'stale-epoch' });
+    }
+  });
+
+  it('still accepts a bigint-as-string epoch the pg driver returns', () => {
+    const url = mintSignedUrl(BASE, { key: 'k', epoch: 2, ttlMs: 60_000 }, SECRET, T0);
+    expect(verifySignedUrl(url, SECRET, { currentEpoch: '2' as unknown as number, now: T0 + 1 }).ok).toBe(true);
+    expect(verifySignedUrl(url, SECRET, { currentEpoch: '3' as unknown as number, now: T0 + 1 })).toEqual({
+      ok: false,
+      reason: 'stale-epoch',
+    });
+  });
+});

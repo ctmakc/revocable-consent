@@ -40,7 +40,13 @@ function flag(name) {
 }
 
 async function rowsFromFile(path) {
-  const raw = path === '-' ? readFileSync(0, 'utf8') : readFileSync(path, 'utf8');
+  let raw;
+  try {
+    raw = path === '-' ? readFileSync(0, 'utf8') : readFileSync(path, 'utf8');
+  } catch (err) {
+    // A missing/unreadable file is an INPUT error (exit 2), never "chain broken".
+    usage(`could not read ${path === '-' ? 'stdin' : path}: ${err.code ?? err.message}`);
+  }
   let parsed;
   try {
     parsed = JSON.parse(raw);
@@ -62,12 +68,17 @@ async function rowsFromPostgres(table) {
     usage('the `pg` package is not installed (npm i pg), or use --file');
   }
   const client = new (pg.default ?? pg).Client({ connectionString: process.env.DATABASE_URL });
-  await client.connect();
   try {
+    await client.connect();
     const res = await client.query(`SELECT ${COLUMNS} FROM ${table} ORDER BY seq ASC`);
     return res.rows;
+  } catch (err) {
+    // Unreachable database, bad credentials, missing table: an INPUT error
+    // (exit 2), not "chain broken". Report the driver's code/message only —
+    // never DATABASE_URL, which carries the password.
+    usage(`could not read the ledger from Postgres: ${err.code ? `${err.code} ` : ''}${err.message}`);
   } finally {
-    await client.end();
+    await client.end().catch(() => {});
   }
 }
 

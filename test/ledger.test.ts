@@ -6,7 +6,7 @@ import {
   GENESIS_PREV_HASH,
   GENESIS_PREV_SEQ,
 } from '../src/ledger-core.mjs';
-import { appendLedgerEntry, type QueryFn } from '../src/ledger';
+import { appendLedgerEntry, publicEntryType, type QueryFn } from '../src/ledger';
 
 describe('canonicalJson', () => {
   it('sorts object keys recursively', () => {
@@ -241,5 +241,95 @@ describe('appendLedgerEntry payload normalisation (stored value === hashed value
     });
     expect(rows[1].prev_hash).toBe(rows[0].hash);
     expect(verifyChain(rows)).toEqual({ ok: true, count: 2 });
+  });
+});
+
+describe('appendLedgerEntry contribution_id normalisation (uuid column round trip)', () => {
+  // Postgres' uuid type accepts upper case, braces and missing hyphens, but
+  // always returns the lowercase 8-4-4-4-12 form; this fake does the same.
+  function db() {
+    const rows: any[] = [];
+    let seq = 0;
+    const q: QueryFn = (async (text: string, params: unknown[] = []) => {
+      if (text.startsWith('SELECT seq, hash FROM ledger_entries')) {
+        const tail = rows[rows.length - 1];
+        return tail ? [{ seq: String(tail.seq), hash: tail.hash }] : [];
+      }
+      const [prev_seq, contribution_id, entry_type, actor, payloadJson, prev_hash, hash] = params as any[];
+      const hex = String(contribution_id).replace(/[{}-]/g, '').toLowerCase();
+      seq += 1;
+      const row = {
+        seq,
+        prev_seq: Number(prev_seq),
+        contribution_id: `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`,
+        entry_type,
+        actor,
+        payload: JSON.parse(payloadJson),
+        prev_hash,
+        hash,
+      };
+      rows.push(row);
+      return [row];
+    }) as QueryFn;
+    return { q, rows };
+  }
+
+  for (const id of [
+    'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11',
+    '{a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11}',
+    'a0eebc999c0b4ef8bb6d6bb9bd380a11',
+  ]) {
+    it(`an entry appended with ${id} re-verifies after the uuid column canonicalises it`, async () => {
+      const { q, rows } = db();
+      const row = await appendLedgerEntry(q, {
+        contribution_id: id,
+        entry_type: 'published',
+        actor: 'admin',
+        payload: { title: 'Song' },
+      });
+      expect(row.contribution_id).toBe('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
+      expect(verifyChain(rows)).toEqual({ ok: true, count: 1 });
+    });
+  }
+
+  it('leaves a non-uuid contribution_id untouched', async () => {
+    const { q } = db();
+    const calls: unknown[][] = [];
+    const spy: QueryFn = (async (text: string, params: unknown[] = []) => {
+      calls.push(params);
+      return q(text, params);
+    }) as QueryFn;
+    await appendLedgerEntry(spy, { contribution_id: 'Item-42', entry_type: 'published', actor: 'a', payload: {} });
+    expect(calls[1][1]).toBe('Item-42');
+  });
+});
+
+describe('publicEntryType', () => {
+  it('maps legacy spellings and passes current ones through', () => {
+    expect(publicEntryType('mint')).toBe('published');
+    expect(publicEntryType('withdraw')).toBe('withdrawn');
+    expect(publicEntryType('media_deleted')).toBe('media_deleted');
+  });
+
+  it('does not leak Object.prototype members for unknown types', () => {
+    for (const t of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      expect(publicEntryType(t)).toBe(t);
+    }
+  });
+});
+
+describe('verifyChain on malformed rows (exported files are untrusted input)', () => {
+  it('reports a row without a hash instead of throwing', () => {
+    const [row] = buildChain([{ entry_type: 'published' }]);
+    const { hash: _drop, ...noHash } = row;
+    const r = verifyChain([noHash]);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/hash/);
+  });
+
+  it('reports a non-object row instead of throwing', () => {
+    const r = verifyChain([null]);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/not an object/);
   });
 });

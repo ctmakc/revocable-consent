@@ -76,6 +76,11 @@ export function computeEntryHash({ entry_type, contribution_id, actor, payload, 
 export function verifyChain(rows) {
   let prev = null;
   for (const row of rows) {
+    // Exported chains are untrusted input: a malformed row is a failed
+    // verification, never a crash.
+    if (row === null || typeof row !== 'object' || Array.isArray(row)) {
+      return { ok: false, count: 0, seq: prev ? Number(prev.seq) : GENESIS_PREV_SEQ, error: `entry after seq=${prev ? prev.seq : GENESIS_PREV_SEQ} is not an object` };
+    }
     const seq = Number(row.seq);
     if (prev === null) {
       if (Number(row.prev_seq) !== GENESIS_PREV_SEQ) {
@@ -91,6 +96,9 @@ export function verifyChain(rows) {
       if (row.prev_hash !== prev.hash) {
         return { ok: false, count: 0, seq, error: `entry seq=${seq} prev_hash does not match predecessor hash` };
       }
+    }
+    if (typeof row.hash !== 'string') {
+      return { ok: false, count: 0, seq, error: `entry seq=${seq} has no stored hash` };
     }
     const expected = computeEntryHash(row);
     if (row.hash !== expected) {

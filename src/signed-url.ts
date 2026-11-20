@@ -117,7 +117,12 @@ export function verifySignedUrl(
   if (!constantTimeEqual(sig, expected)) return { ok: false, reason: 'bad-signature' };
   if (opts.expectKey !== undefined && opts.expectKey !== key) return { ok: false, reason: 'key-mismatch' };
   if (now >= exp) return { ok: false, reason: 'expired' };
-  if (epoch < opts.currentEpoch) return { ok: false, reason: 'stale-epoch' };
+  // Fail closed: an epoch we cannot read as a number (undefined from a wrong
+  // column name, null for a missing row) must not wave every URL through —
+  // `epoch < undefined` is false. Numeric strings (pg returns bigint as a
+  // string) keep working.
+  const currentEpoch = Number(opts.currentEpoch ?? NaN);
+  if (!Number.isFinite(currentEpoch) || epoch < currentEpoch) return { ok: false, reason: 'stale-epoch' };
   return { ok: true, claims };
 }
 

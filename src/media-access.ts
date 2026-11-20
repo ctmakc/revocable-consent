@@ -1,7 +1,7 @@
 // Pure media-delivery + direct-upload decision logic.
 // No schema library, no DB, no network — safe to import from BOTH a browser
 // bundle (the intake form) and server routes, and fully unit-testable.
-import { isPubliclyVisible, type Status, type ConsentContext } from './moderation';
+import { isPubliclyVisible, type Status, type ConsentContext } from './moderation.js';
 
 // ---- accepted media types ----
 // Single source of truth, kept here (zero-dep, browser-safe) so the client form,
